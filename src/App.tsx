@@ -24,16 +24,19 @@ import {
   VscRepoPull,
 } from "react-icons/vsc";
 import useStorage from "use-local-storage-state";
-import Editor from "@monaco-editor/react";
+import Editor, { loader } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
 import rustpadRaw from "../rustpad-server/src/rustpad.rs?raw";
 import languages from "./languages.json";
 import animals from "./animals.json";
 import Rustpad, { UserInfo } from "./rustpad";
-import useHash from "./useHash";
+import useHistory from "./useHistory";
 import ConnectionStatus from "./ConnectionStatus";
 import Footer from "./Footer";
 import User from "./User";
+
+loader.config({ monaco });
 
 function getWsUri(id: string) {
   return (
@@ -63,7 +66,12 @@ function App() {
   const [editor, setEditor] = useState<editor.IStandaloneCodeEditor>();
   const [darkMode, setDarkMode] = useStorage("darkMode", () => false);
   const rustpad = useRef<Rustpad>();
-  const id = useHash();
+  const id = useHistory();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    setIsCollapsed(screen.width <= 640);
+  }, []);
 
   useEffect(() => {
     if (editor?.getModel()) {
@@ -126,7 +134,7 @@ function App() {
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(`${window.location.origin}/#${id}`);
+    await navigator.clipboard.writeText(`${window.location.origin}/${id}`);
     toast({
       title: "Copied!",
       description: "Link copied to clipboard",
@@ -160,6 +168,10 @@ function App() {
     setDarkMode(!darkMode);
   }
 
+  function toggleCollapse() {
+    setIsCollapsed(!isCollapsed);
+  }
+
   return (
     <Flex
       direction="column"
@@ -176,119 +188,86 @@ function App() {
         fontSize="sm"
         py={0.5}
       >
-        Rustpad
+        RealTimePad
       </Box>
       <Flex flex="1 0" minH={0}>
-        <Container
-          w="xs"
-          bgColor={darkMode ? "#252526" : "#f3f3f3"}
-          overflowY="auto"
-          maxW="full"
-          lineHeight={1.4}
-          py={4}
-        >
-          <ConnectionStatus darkMode={darkMode} connection={connection} />
-
-          <Flex justifyContent="space-between" mt={4} mb={1.5} w="full">
-            <Heading size="sm">Dark Mode</Heading>
-            <Switch isChecked={darkMode} onChange={handleDarkMode} />
-          </Flex>
-
-          <Heading mt={4} mb={1.5} size="sm">
-            Language
-          </Heading>
-          <Select
-            size="sm"
-            bgColor={darkMode ? "#3c3c3c" : "white"}
-            borderColor={darkMode ? "#3c3c3c" : "white"}
-            value={language}
-            onChange={(event) => handleChangeLanguage(event.target.value)}
+        {!isCollapsed && (
+          <Container
+            w="xs"
+            bgColor={darkMode ? "#252526" : "#f3f3f3"}
+            overflowY="auto"
+            maxW="full"
+            lineHeight={1.4}
+            py={4}
           >
-            {languages.map((lang) => (
-              <option key={lang} value={lang} style={{ color: "black" }}>
-                {lang}
-              </option>
-            ))}
-          </Select>
+            <ConnectionStatus darkMode={darkMode} connection={connection} />
 
-          <Heading mt={4} mb={1.5} size="sm">
-            Share Link
-          </Heading>
-          <InputGroup size="sm">
-            <Input
-              readOnly
-              pr="3.5rem"
-              variant="outline"
+            <Flex justifyContent="space-between" mt={4} mb={1.5} w="full">
+              <Heading size="sm">Dark Mode</Heading>
+              <Switch isChecked={darkMode} onChange={handleDarkMode} />
+            </Flex>
+
+            <Heading mt={4} mb={1.5} size="sm">
+              Language
+            </Heading>
+            <Select
+              size="sm"
               bgColor={darkMode ? "#3c3c3c" : "white"}
               borderColor={darkMode ? "#3c3c3c" : "white"}
-              value={`${window.location.origin}/#${id}`}
-            />
-            <InputRightElement width="3.5rem">
-              <Button
-                h="1.4rem"
-                size="xs"
-                onClick={handleCopy}
-                _hover={{ bg: darkMode ? "#575759" : "gray.200" }}
-                bgColor={darkMode ? "#575759" : "gray.200"}
-              >
-                Copy
-              </Button>
-            </InputRightElement>
-          </InputGroup>
-
-          <Heading mt={4} mb={1.5} size="sm">
-            Active Users
-          </Heading>
-          <Stack spacing={0} mb={1.5} fontSize="sm">
-            <User
-              info={{ name, hue }}
-              isMe
-              onChangeName={(name) => name.length > 0 && setName(name)}
-              onChangeColor={() => setHue(generateHue())}
-              darkMode={darkMode}
-            />
-            {Object.entries(users).map(([id, info]) => (
-              <User key={id} info={info} darkMode={darkMode} />
-            ))}
-          </Stack>
-
-          <Heading mt={4} mb={1.5} size="sm">
-            About
-          </Heading>
-          <Text fontSize="sm" mb={1.5}>
-            <strong>Rustpad</strong> is an open-source collaborative text editor
-            based on the <em>operational transformation</em> algorithm.
-          </Text>
-          <Text fontSize="sm" mb={1.5}>
-            Share a link to this pad with others, and they can edit from their
-            browser while seeing your changes in real time.
-          </Text>
-          <Text fontSize="sm" mb={1.5}>
-            Built using Rust and TypeScript. See the{" "}
-            <Link
-              color="blue.600"
-              fontWeight="semibold"
-              href="https://github.com/ekzhang/rustpad"
-              isExternal
+              value={language}
+              onChange={(event) => handleChangeLanguage(event.target.value)}
             >
-              GitHub repository
-            </Link>{" "}
-            for details.
-          </Text>
+              {languages.map((lang) => (
+                <option key={lang} value={lang} style={{ color: "black" }}>
+                  {lang}
+                </option>
+              ))}
+            </Select>
 
-          <Button
-            size="sm"
-            colorScheme={darkMode ? "whiteAlpha" : "blackAlpha"}
-            borderColor={darkMode ? "purple.400" : "purple.600"}
-            color={darkMode ? "purple.400" : "purple.600"}
-            variant="outline"
-            leftIcon={<VscRepoPull />}
-            mt={1}
-            onClick={handleLoadSample}
-          >
-            Read the code
-          </Button>
-        </Container>
+            <Heading mt={4} mb={1.5} size="sm">
+              Share Link
+            </Heading>
+            <InputGroup size="sm">
+              <Input
+                readOnly
+                pr="3.5rem"
+                variant="outline"
+                bgColor={darkMode ? "#3c3c3c" : "white"}
+                borderColor={darkMode ? "#3c3c3c" : "white"}
+                value={`${window.location.origin}/${id}`}
+              />
+              <InputRightElement width="3.5rem">
+                <Button
+                  h="1.4rem"
+                  size="xs"
+                  onClick={handleCopy}
+                  _hover={{
+                    bg: darkMode ? "#575759" : "gray.200",
+                  }}
+                  bgColor={darkMode ? "#575759" : "gray.200"}
+                >
+                  Copy
+                </Button>
+              </InputRightElement>
+            </InputGroup>
+
+            <Heading mt={4} mb={1.5} size="sm">
+              Active Users
+            </Heading>
+            <Stack spacing={0} mb={1.5} fontSize="sm">
+              <User
+                info={{ name, hue }}
+                isMe
+                onChangeName={(name) => name.length > 0 && setName(name)}
+                onChangeColor={() => setHue(generateHue())}
+                darkMode={darkMode}
+              />
+              {Object.entries(users).map(([id, info]) => (
+                <User key={id} info={info} darkMode={darkMode} />
+              ))}
+            </Stack>
+          </Container>
+        )}
         <Flex flex={1} minW={0} h="100%" direction="column" overflow="hidden">
           <HStack
             h={6}
@@ -316,6 +295,50 @@ function App() {
               onMount={(editor) => setEditor(editor)}
             />
           </Box>
+          {isCollapsed && (
+            <Button
+              onClick={() => setIsCollapsed(false)}
+              position="absolute"
+              bottom=".25%"
+              left="xs"
+              transform="translate(0%, -50%)"
+              bgColor="rgba(128, 128, 128, 0.3)"
+              _hover={{
+                bgColor: darkMode
+                  ? "rgba(87, 87, 89, 0.2)"
+                  : "rgba(128, 128, 128, 0.2)",
+              }}
+              _active={{
+                bgColor: darkMode
+                  ? "rgba(87, 87, 89, 0.4)"
+                  : "rgba(128, 128, 128, 0.4)",
+              }}
+            >
+              {">"}
+            </Button>
+          )}
+          {!isCollapsed && (
+            <Button
+              position="absolute"
+              bottom=".25%"
+              left="xs"
+              transform="translate(-100%, -50%)"
+              onClick={toggleCollapse}
+              bgColor="transparent"
+              _hover={{
+                bgColor: darkMode
+                  ? "rgba(87, 87, 89, 0.2)"
+                  : "rgba(128, 128, 128, 0.2)",
+              }}
+              _active={{
+                bgColor: darkMode
+                  ? "rgba(87, 87, 89, 0.4)"
+                  : "rgba(128, 128, 128, 0.4)",
+              }}
+            >
+              {"<"}
+            </Button>
+          )}
         </Flex>
       </Flex>
       <Footer />
