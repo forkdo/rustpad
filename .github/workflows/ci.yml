@@ -3,57 +3,83 @@ name: Build and Push
 on:
   push:
     branches:
-      - main
-      - dev
-
-env:
-  REGISTRY_URL: ${{ secrets.REGISTRY_URL || 'ghcr.io' }}
-  REGISTRY_USER: ${{ secrets.REGISTRY_USER || github.actor }}
-  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
-      
+      - '*'
+  pull_request:
 
 jobs:
   docker:
     name: Docker Build and Push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Login to Image Hub
-        if: github.event_name == 'push'
+      - name: Login to GitHub Container Registry (ghcr.io)
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY_URL }}
-          username: ${{ env.REGISTRY_USER }}
-          password: ${{ env.REGISTRY_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Format SHA
-        id: format_sha
+      - name: Check Docker Hub Credentials
+        id: check_docker_creds
         run: |
-          # echo "short_sha=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
-          short_sha=$(echo $GITHUB_SHA | cut -c1-7)
-          echo "image_tag=${{ env.REGISTRY_URL }}/${{ github.repository }}:${short_sha}" >> $GITHUB_OUTPUT
-          echo "image_latest=${{ env.REGISTRY_URL }}/${{ github.repository }}:latest" >> $GITHUB_OUTPUT
+          if [[ -n "${{ secrets.DOCKER_USER }}" && -n "${{ secrets.DOCKER_TOKEN }}" ]]; then
+            echo "docker_creds_exist=true" >> $GITHUB_OUTPUT
+          else
+            echo "docker_creds_exist=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build and push
+      - name: Login to Docker Hub (if credentials are provided)
+        if: steps.check_docker_creds.outputs.docker_creds_exist == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Generate Tags
+        id: generate_tags
+        run: |
+          short_sha=$(echo $GITHUB_SHA | cut -c1-7)
+
+          # GHCR tags
+          echo "ghcr_image_tag=ghcr.io/${{ github.repository }}:${short_sha}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "ghcr_image_latest=ghcr.io/${{ github.repository }}:latest" >> $GITHUB_OUTPUT
+          fi
+
+          # Docker Hub tags (if credentials provided)
+          if [[ "${{ steps.check_docker_creds.outputs.docker_creds_exist }}" == "true" ]]; then
+            docker_org=${{ secrets.DOCKER_ORG || secrets.DOCKER_USER }}
+            echo "docker_image_tag=docker.io/${docker_org}/${{ github.repository }}:${short_sha}" >> $GITHUB_OUTPUT
+            if [[ "${{ github.ref_name }}" == "main" ]]; then
+              echo "docker_image_latest=docker.io/${docker_org}/${{ github.repository }}:latest" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Build and Push Docker Images
         uses: docker/build-push-action@v5
         with:
-          push: true 
+          push: true
           platforms: linux/amd64
           build-args: GITHUB_SHA=${{ github.sha }}
-          tags: ${{ steps.format_sha.outputs.image_tag }},${{ steps.format_sha.outputs.image_latest }}
-      
-      - name: Extract files from image
-        run: |
-            mkdir artifact
-            docker create --name temp-container ${{ steps.format_sha.outputs.image_tag }}
-            docker cp temp-container:dist ./artifact/
-            docker cp temp-container:rustpad-server ./artifact/
-            docker rm temp-container
+          tags: |
+            ${{ steps.generate_tags.outputs.ghcr_image_tag }}
+            ${{ steps.generate_tags.outputs.ghcr_image_latest || '' }}
+            ${{ steps.generate_tags.outputs.docker_image_tag || '' }}
+            ${{ steps.generate_tags.outputs.docker_image_latest || '' }}
 
-      - name: Upload artifact
+      - name: Extract Files from Image
+        run: |
+          mkdir -p artifact
+          docker create --name temp-container ${{ steps.generate_tags.outputs.ghcr_image_tag }}
+          docker cp temp-container:dist ./artifact/
+          docker cp temp-container:rustpad-server ./artifact/
+          docker rm temp-container
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: artifact
-          path: artifact
+          path: artifact/
