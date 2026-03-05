@@ -190,21 +190,23 @@ function App() {
       >
         RealTimePad
       </Box>
-      <Flex flex="1 0" minH={0}>
-        <Sidebar
-          documentId={id}
-          connection={connection}
-          darkMode={darkMode}
-          language={language}
-          currentUser={{ name, hue }}
-          users={users}
-          onDarkModeChange={handleDarkModeChange}
-          onLanguageChange={handleLanguageChange}
-          onLoadSample={() => handleLoadSample(false)}
-          onCopyLink={handleCopy}
-          onChangeName={(name) => name.length > 0 && setName(name)}
-          onChangeColor={() => setHue(generateHue())}
-        />
+      <Flex flex="1 0" minH={0} position="relative">
+        {!isCollapsed && (
+          <Sidebar
+            documentId={id}
+            connection={connection}
+            darkMode={darkMode}
+            language={language}
+            currentUser={{ name, hue }}
+            users={users}
+            onDarkModeChange={handleDarkModeChange}
+            onLanguageChange={handleLanguageChange}
+            onLoadSample={() => handleLoadSample(false)}
+            onCopyLink={handleCopy}
+            onChangeName={(name) => name.length > 0 && setName(name)}
+            onChangeColor={() => setHue(generateHue())}
+          />
+        )}
         <ReadCodeConfirm
           isOpen={readCodeConfirmOpen}
           onClose={() => setReadCodeConfirmOpen(false)}
