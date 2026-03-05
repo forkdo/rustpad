@@ -26,7 +26,7 @@ import Sidebar from "./Sidebar";
 import animals from "./animals.json";
 import languages from "./languages.json";
 import Rustpad, { UserInfo } from "./rustpad";
-import useHistory from "./useHistory";
+import useHash from "./useHash";
 
 loader.config({ monaco });
 
@@ -62,7 +62,7 @@ function App() {
     defaultValue: false,
   });
   const rustpad = useRef<Rustpad>();
-  const id = useHistory();
+  const id = useHash();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -132,7 +132,7 @@ function App() {
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(`${window.location.origin}/${id}`);
+    await navigator.clipboard.writeText(`${window.location.origin}/#${id}`);
     toast({
       title: "Copied!",
       description: "Link copied to clipboard",
