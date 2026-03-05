@@ -92,6 +92,7 @@ pub fn server(config: ServerConfig) -> BoxedFilter<(impl Reply,)> {
     warp::path("api")
         .and(backend(config))
         .or(frontend())
+        .or(warp::fs::file(format!("{}/index.html", "dist")))
         .boxed()
 }
 
