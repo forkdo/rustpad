@@ -6,7 +6,22 @@ import wasm from "vite-plugin-wasm";
 export default defineConfig({
   base: "",
   build: {
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 6000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ["monaco-editor"],
+          vendor: [
+            "react",
+            "react-dom",
+            "@chakra-ui/react",
+            "@emotion/react",
+            "@emotion/styled",
+            "framer-motion",
+          ],
+        },
+      },
+    },
   },
   plugins: [wasm(), topLevelAwait(), react()],
   server: {

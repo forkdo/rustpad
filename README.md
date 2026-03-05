@@ -34,6 +34,11 @@ after 24 hours of inactivity.
 ## Development setup
 
 To run this application, you need to install Rust, `wasm-pack`, and Node.js.
+
+```
+cargo install wasm-pack
+```
+
 Then, build the WebAssembly portion of the app:
 
 ```

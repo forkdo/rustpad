@@ -7,8 +7,8 @@ RUN cargo build --release
 
 FROM --platform=amd64 rust:alpine AS wasm
 WORKDIR /home/rust/src
-RUN apk --no-cache add curl musl-dev
-RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+RUN apk --no-cache add musl-dev openssl-dev
+RUN cargo install wasm-pack
 COPY . .
 RUN wasm-pack build rustpad-wasm
 

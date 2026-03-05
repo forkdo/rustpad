@@ -32,6 +32,7 @@ export type SidebarProps = {
   onLoadSample: () => void;
   onChangeName: (name: string) => void;
   onChangeColor: () => void;
+  onCopyLink?: () => void;
 };
 
 function Sidebar({
@@ -46,6 +47,7 @@ function Sidebar({
   onLoadSample,
   onChangeName,
   onChangeColor,
+  onCopyLink,
 }: SidebarProps) {
   const toast = useToast();
 

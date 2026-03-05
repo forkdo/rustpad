@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -13,15 +12,12 @@ import {
   Text,
   useToast,
 } from "@chakra-ui/react";
-import {
-  VscChevronRight,
-  VscFolderOpened,
-  VscGist,
-} from "react-icons/vsc";
-import useLocalStorageState from "use-local-storage-state";
 import Editor, { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
+import { useEffect, useRef, useState } from "react";
+import { VscChevronRight, VscFolderOpened, VscGist } from "react-icons/vsc";
+import useLocalStorageState from "use-local-storage-state";
 
 import rustpadRaw from "../rustpad-server/src/rustpad.rs?raw";
 import Footer from "./Footer";
