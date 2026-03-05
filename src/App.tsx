@@ -2,17 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
-  Container,
   Flex,
-  Heading,
   HStack,
   Icon,
   Input,
   InputGroup,
   InputRightElement,
-  Link,
   Select,
-  Stack,
   Switch,
   Text,
   useToast,
@@ -21,29 +17,27 @@ import {
   VscChevronRight,
   VscFolderOpened,
   VscGist,
-  VscRepoPull,
 } from "react-icons/vsc";
-import useStorage from "use-local-storage-state";
+import useLocalStorageState from "use-local-storage-state";
 import Editor, { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
+
 import rustpadRaw from "../rustpad-server/src/rustpad.rs?raw";
-import languages from "./languages.json";
+import Footer from "./Footer";
+import ReadCodeConfirm from "./ReadCodeConfirm";
+import Sidebar from "./Sidebar";
 import animals from "./animals.json";
+import languages from "./languages.json";
 import Rustpad, { UserInfo } from "./rustpad";
 import useHistory from "./useHistory";
-import ConnectionStatus from "./ConnectionStatus";
-import Footer from "./Footer";
-import User from "./User";
 
 loader.config({ monaco });
 
 function getWsUri(id: string) {
-  return (
-    (window.location.origin.startsWith("https") ? "wss://" : "ws://") +
-    window.location.host +
-    `/api/socket/${id}`
-  );
+  let url = new URL(`api/socket/${id}`, window.location.href);
+  url.protocol = url.protocol == "https:" ? "wss:" : "ws:";
+  return url.href;
 }
 
 function generateName() {
@@ -61,10 +55,16 @@ function App() {
     "connected" | "disconnected" | "desynchronized"
   >("disconnected");
   const [users, setUsers] = useState<Record<number, UserInfo>>({});
-  const [name, setName] = useStorage("name", generateName);
-  const [hue, setHue] = useStorage("hue", generateHue);
+  const [name, setName] = useLocalStorageState("name", {
+    defaultValue: generateName,
+  });
+  const [hue, setHue] = useLocalStorageState("hue", {
+    defaultValue: generateHue,
+  });
   const [editor, setEditor] = useState<editor.IStandaloneCodeEditor>();
-  const [darkMode, setDarkMode] = useStorage("darkMode", () => false);
+  const [darkMode, setDarkMode] = useLocalStorageState("darkMode", {
+    defaultValue: false,
+  });
   const rustpad = useRef<Rustpad>();
   const id = useHistory();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -72,6 +72,8 @@ function App() {
   useEffect(() => {
     setIsCollapsed(screen.width <= 640);
   }, []);
+
+  const [readCodeConfirmOpen, setReadCodeConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (editor?.getModel()) {
@@ -104,7 +106,7 @@ function App() {
         rustpad.current = undefined;
       };
     }
-  }, [id, editor, toast, setUsers]);
+  }, [id, editor, toast]);
 
   useEffect(() => {
     if (connection === "connected") {
@@ -112,7 +114,7 @@ function App() {
     }
   }, [connection, name, hue]);
 
-  function handleChangeLanguage(language: string) {
+  function handleLanguageChange(language: string) {
     setLanguage(language);
     if (rustpad.current?.setLanguage(language)) {
       toast({
@@ -144,27 +146,29 @@ function App() {
     });
   }
 
-  function handleLoadSample() {
+  function handleLoadSample(confirmed: boolean) {
     if (editor?.getModel()) {
       const model = editor.getModel()!;
+      const range = model.getFullModelRange();
+
+      if (range.endLineNumber >= 10 && !confirmed) {
+        setReadCodeConfirmOpen(true);
+        return;
+      }
+
       model.pushEditOperations(
         editor.getSelections(),
-        [
-          {
-            range: model.getFullModelRange(),
-            text: rustpadRaw,
-          },
-        ],
-        () => null
+        [{ range, text: rustpadRaw }],
+        () => null,
       );
       editor.setPosition({ column: 0, lineNumber: 0 });
       if (language !== "rust") {
-        handleChangeLanguage("rust");
+        handleLanguageChange("rust");
       }
     }
   }
 
-  function handleDarkMode() {
+  function handleDarkModeChange() {
     setDarkMode(!darkMode);
   }
 
@@ -191,83 +195,28 @@ function App() {
         RealTimePad
       </Box>
       <Flex flex="1 0" minH={0}>
-        {!isCollapsed && (
-          <Container
-            w="xs"
-            bgColor={darkMode ? "#252526" : "#f3f3f3"}
-            overflowY="auto"
-            maxW="full"
-            lineHeight={1.4}
-            py={4}
-          >
-            <ConnectionStatus darkMode={darkMode} connection={connection} />
-
-            <Flex justifyContent="space-between" mt={4} mb={1.5} w="full">
-              <Heading size="sm">Dark Mode</Heading>
-              <Switch isChecked={darkMode} onChange={handleDarkMode} />
-            </Flex>
-
-            <Heading mt={4} mb={1.5} size="sm">
-              Language
-            </Heading>
-            <Select
-              size="sm"
-              bgColor={darkMode ? "#3c3c3c" : "white"}
-              borderColor={darkMode ? "#3c3c3c" : "white"}
-              value={language}
-              onChange={(event) => handleChangeLanguage(event.target.value)}
-            >
-              {languages.map((lang) => (
-                <option key={lang} value={lang} style={{ color: "black" }}>
-                  {lang}
-                </option>
-              ))}
-            </Select>
-
-            <Heading mt={4} mb={1.5} size="sm">
-              Share Link
-            </Heading>
-            <InputGroup size="sm">
-              <Input
-                readOnly
-                pr="3.5rem"
-                variant="outline"
-                bgColor={darkMode ? "#3c3c3c" : "white"}
-                borderColor={darkMode ? "#3c3c3c" : "white"}
-                value={`${window.location.origin}/${id}`}
-              />
-              <InputRightElement width="3.5rem">
-                <Button
-                  h="1.4rem"
-                  size="xs"
-                  onClick={handleCopy}
-                  _hover={{
-                    bg: darkMode ? "#575759" : "gray.200",
-                  }}
-                  bgColor={darkMode ? "#575759" : "gray.200"}
-                >
-                  Copy
-                </Button>
-              </InputRightElement>
-            </InputGroup>
-
-            <Heading mt={4} mb={1.5} size="sm">
-              Active Users
-            </Heading>
-            <Stack spacing={0} mb={1.5} fontSize="sm">
-              <User
-                info={{ name, hue }}
-                isMe
-                onChangeName={(name) => name.length > 0 && setName(name)}
-                onChangeColor={() => setHue(generateHue())}
-                darkMode={darkMode}
-              />
-              {Object.entries(users).map(([id, info]) => (
-                <User key={id} info={info} darkMode={darkMode} />
-              ))}
-            </Stack>
-          </Container>
-        )}
+        <Sidebar
+          documentId={id}
+          connection={connection}
+          darkMode={darkMode}
+          language={language}
+          currentUser={{ name, hue }}
+          users={users}
+          onDarkModeChange={handleDarkModeChange}
+          onLanguageChange={handleLanguageChange}
+          onLoadSample={() => handleLoadSample(false)}
+          onCopyLink={handleCopy}
+          onChangeName={(name) => name.length > 0 && setName(name)}
+          onChangeColor={() => setHue(generateHue())}
+        />
+        <ReadCodeConfirm
+          isOpen={readCodeConfirmOpen}
+          onClose={() => setReadCodeConfirmOpen(false)}
+          onConfirm={() => {
+            handleLoadSample(true);
+            setReadCodeConfirmOpen(false);
+          }}
+        />
         <Flex flex={1} minW={0} h="100%" direction="column" overflow="hidden">
           <HStack
             h={6}
