@@ -10,6 +10,7 @@ import {
   Select,
   Switch,
   Text,
+  useBreakpointValue,
   useToast,
 } from "@chakra-ui/react";
 import Editor, { loader } from "@monaco-editor/react";
@@ -63,11 +64,14 @@ function App() {
   });
   const rustpad = useRef<Rustpad>();
   const id = useHash();
+  const isMobile = useBreakpointValue({ base: true, md: false });
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
-    setIsCollapsed(screen.width <= 640);
-  }, []);
+    if (isMobile !== undefined) {
+      setIsCollapsed(isMobile);
+    }
+  }, [isMobile]);
 
   const [readCodeConfirmOpen, setReadCodeConfirmOpen] = useState(false);
 
@@ -188,7 +192,7 @@ function App() {
         fontSize="sm"
         py={0.5}
       >
-        RealTimePad
+        Rustpad
       </Box>
       <Flex flex="1 0" minH={0} position="relative">
         {!isCollapsed && (
@@ -242,7 +246,7 @@ function App() {
               onMount={(editor) => setEditor(editor)}
             />
           </Box>
-          {isCollapsed && (
+          {isCollapsed && !isMobile && (
             <Button
               onClick={() => setIsCollapsed(false)}
               position="absolute"
@@ -250,6 +254,7 @@ function App() {
               left="xs"
               transform="translate(0%, -50%)"
               bgColor="rgba(128, 128, 128, 0.3)"
+              display={{ base: "none", md: "block" }}
               _hover={{
                 bgColor: darkMode
                   ? "rgba(87, 87, 89, 0.2)"
@@ -264,7 +269,7 @@ function App() {
               {">"}
             </Button>
           )}
-          {!isCollapsed && (
+          {!isCollapsed && !isMobile && (
             <Button
               position="absolute"
               bottom=".25%"
@@ -272,6 +277,7 @@ function App() {
               transform="translate(-100%, -50%)"
               onClick={toggleCollapse}
               bgColor="transparent"
+              display={{ base: "none", md: "block" }}
               _hover={{
                 bgColor: darkMode
                   ? "rgba(87, 87, 89, 0.2)"

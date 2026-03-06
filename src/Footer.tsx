@@ -18,7 +18,7 @@ function Footer() {
         align="center"
       >
         <Icon as={VscRemote} mb={-0.5} mr={1} />
-        <Text fontSize="xs">RealTimePad ({version})</Text>
+        <Text fontSize="xs">Rustpad ({version})</Text>
       </Flex>
     </Flex>
   );
